@@ -1,0 +1,6 @@
+<launch>
+	<group ns="LIDAR">
+		<node pkg="LIDAR" type="odometrySimulator" name="odometrySimulator" output="screen"/>
+		<node pkg="LIDAR" type="sensorSynchronizer" name="sensorSync" output="screen"/>
+	</group>
+</launch>
