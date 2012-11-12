@@ -12,6 +12,7 @@
 #include <std_msgs/Char.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/tf.h>
+#include <tf/transform_broadcaster.h>
 
 class OdometrySimulator
 {
@@ -37,9 +38,11 @@ private:
 	ros::Time currentTime;
 	ros::Duration sampleTime;
 	nav_msgs::Odometry odometry;
+	geometry_msgs::TransformStamped stampedTransform;
+	tf::TransformBroadcaster transformBroadcaster;
 
 	void keyboardEventCallback (const std_msgs::Char::ConstPtr& data);
-	void update(void);
+	void updateOdometry(void);
 
 public:
 	OdometrySimulator();

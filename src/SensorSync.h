@@ -32,7 +32,6 @@ private:
 	void imuCallback (const sensor_msgs::Imu::ConstPtr& data);
 	void laserScanCallback (const sensor_msgs::LaserScan::ConstPtr& data);
 	void synchronizeStamps (void);
-	void publish (void);
 
 public:
 	SensorSync();

@@ -28,7 +28,7 @@ SensorSync::SensorSync()
 
 	this->odometrySubscriber = this->nodeHandler.subscribe("/LIDAR/simulatedOdometry", 10, &SensorSync::odometryCallback, this);
 	this->imuSubscriber = this->nodeHandler.subscribe("/LIDAR/IMU", 10, &SensorSync::imuCallback, this);
-	this->odometrySubscriber = this->nodeHandler.subscribe("/LIDAR/LASERSCAN", 10, &SensorSync::laserScanCallback, this);
+	this->laserScanSubscriber = this->nodeHandler.subscribe("/LIDAR/LASERSCAN", 10, &SensorSync::laserScanCallback, this);
 }
 
 SensorSync::~SensorSync()
@@ -39,6 +39,7 @@ SensorSync::~SensorSync()
 void SensorSync::odometryCallback(const nav_msgs::Odometry::ConstPtr& data)
 {
 	this->odometry.header.frame_id = data.get()->header.frame_id;
+	this->odometry.header.stamp = data.get()->header.stamp;
 	this->odometry.pose.pose.orientation = data.get()->pose.pose.orientation;
 	this->odometry.pose.pose.position.x = data.get()->pose.pose.position.x;
 	this->odometry.pose.pose.position.y = data.get()->pose.pose.position.y;
@@ -76,22 +77,11 @@ void SensorSync::laserScanCallback(const sensor_msgs::LaserScan::ConstPtr& data)
 
 void SensorSync::synchronizeStamps(void)
 {
-	uint32_t sequence = this->odometry.header.seq;
-	ros::Time stamp = this->odometry.header.stamp;
+	//	Update stamps
+	this->imu.header.stamp = this->odometry.header.stamp;
+	this->laserScan.header.stamp = this->odometry.header.stamp;
 
-	//	Update IMU header
-	this->imu.header.seq = sequence;
-	this->imu.header.stamp = stamp;
-
-	//	Update LaserScan header
-	this->laserScan.header.seq = sequence;
-	this->laserScan.header.stamp = stamp;
-
-	this->publish();
-}
-
-void SensorSync::publish(void)
-{
+	//	Publish
 	this->odometryPublisher.publish(this->odometry);
 	this->imuPublisher.publish(this->imu);
 	this->laserScanPublisher.publish(this->laserScan);

@@ -39,13 +39,28 @@ OdometrySimulator::OdometrySimulator()
 	this->currentTime = ros::Time::now();
 	this->sampleTime = ros::Duration(0.1f);
 
+	//	Initialize transform
+	this->stampedTransform.header.frame_id = "odom";
+	this->stampedTransform.child_frame_id = "base_link";
+	this->stampedTransform.header.stamp = currentTime;
+
+	this->stampedTransform.transform.rotation = tf::createQuaternionMsgFromYaw(this->odometryPose.yaw);
+	this->stampedTransform.transform.translation.x = this->odometryPose.x;
+	this->stampedTransform.transform.translation.y = this->odometryPose.y;
+	this->stampedTransform.transform.translation.z = 0.0f;
+
+	//	Broadcast transform
+	this->transformBroadcaster.sendTransform(this->stampedTransform);
+
 	//	Initialize odometry
-	this->odometry.header.frame_id = "/odometry";
+	this->odometry.header.frame_id = "odom";
+	this->odometry.child_frame_id = "base_link";
 	this->odometry.header.stamp = ros::Time::now();
 
 	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(this->odometryPose.yaw);
 	this->odometry.pose.pose.position.x = this->odometryPose.x;
 	this->odometry.pose.pose.position.y = this->odometryPose.y;
+	this->odometry.pose.pose.position.z = 0.0f;
 
 	//	Publish odometry
 	this->odometryPublisher.publish(this->odometry);
@@ -60,11 +75,11 @@ void OdometrySimulator::keyboardEventCallback(const std_msgs::Char::ConstPtr& da
 {
 	if (data.get()->data == 0x20) 	//	Space-bar
 	{
-		this->update();
+		this->updateOdometry();
 	}
 }
 
-void OdometrySimulator::update(void)
+void OdometrySimulator::updateOdometry(void)
 {
 	//	Calculate odometry
 	double dt = this->sampleTime.toSec();
@@ -75,11 +90,20 @@ void OdometrySimulator::update(void)
 	//	Simulate current time and update stamp
 	this->currentTime += this->sampleTime;
 	this->odometry.header.stamp = this->currentTime;
+	this->stampedTransform.header.stamp = this->currentTime;
 
 	//	Update odometry pose
 	this->odometryPose.yaw += deltaYaw;
 	this->odometryPose.x += deltaX;
 	this->odometryPose.y += deltaY;
+
+	//	Update transform
+	this->stampedTransform.transform.rotation = tf::createQuaternionMsgFromYaw(this->odometryPose.yaw);
+	this->stampedTransform.transform.translation.x = this->odometryPose.x;
+	this->stampedTransform.transform.translation.y = this->odometryPose.y;
+
+	//	Broadcast transform
+	this->transformBroadcaster.sendTransform(this->stampedTransform);
 
 	//	Update odometry
 	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(this->odometryPose.yaw);
