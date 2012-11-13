@@ -11,7 +11,7 @@ int main (int argc, char** argv)
 {
 	ros::init(argc, argv, "OdometrySimulator");
 
-	OdometrySimulator odomSim = OdometrySimulator();
+	OdometrySimulator odomSim;
 
 	ros::spin();
 
@@ -90,7 +90,7 @@ void OdometrySimulator::updateOdometry(void)
 	//	Simulate current time and update stamp
 	this->currentTime += this->sampleTime;
 	this->odometry.header.stamp = this->currentTime;
-	this->stampedTransform.header.stamp = this->currentTime;
+	this->stampedTransform.header.stamp = ros::Time::now();
 
 	//	Update odometry pose
 	this->odometryPose.yaw += deltaYaw;

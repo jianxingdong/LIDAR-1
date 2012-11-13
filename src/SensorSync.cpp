@@ -11,7 +11,7 @@ int main (int argc, char** argv)
 {
 	ros::init(argc, argv, "SensorSynchronizer");
 
-	SensorSync sensorSync = SensorSync();
+	SensorSync sensorSync;
 
 	ros::spin();
 
@@ -27,8 +27,8 @@ SensorSync::SensorSync()
 	this->laserScanPublisher = this->nodeHandler.advertise<sensor_msgs::LaserScan>("/LIDAR/synched/laserScan", 10);
 
 	this->odometrySubscriber = this->nodeHandler.subscribe("/LIDAR/simulatedOdometry", 10, &SensorSync::odometryCallback, this);
-	this->imuSubscriber = this->nodeHandler.subscribe("/LIDAR/IMU", 10, &SensorSync::imuCallback, this);
-	this->laserScanSubscriber = this->nodeHandler.subscribe("/LIDAR/LASERSCAN", 10, &SensorSync::laserScanCallback, this);
+	this->imuSubscriber = this->nodeHandler.subscribe("/fmSensors/imu", 10, &SensorSync::imuCallback, this);
+	this->laserScanSubscriber = this->nodeHandler.subscribe("/SICK/scan", 10, &SensorSync::laserScanCallback, this);
 }
 
 SensorSync::~SensorSync()

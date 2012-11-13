@@ -1,0 +1,14 @@
+digraph G {
+"/base_footprint" -> "/odom_link"[label="Broadcaster: /TestSetupTransforms/odom_link_broadcaster\nAverage rate: 10.189 Hz\nMost recent transform: -0.059 sec old \nBuffer length: 4.907 sec\n"];
+"/base_footprint" -> "/laser_link"[label="Broadcaster: /TestSetupTransforms/laser_link_broadcaster\nAverage rate: 10.189 Hz\nMost recent transform: -0.091 sec old \nBuffer length: 4.907 sec\n"];
+"/base_footprint" -> "/base_link"[label="Broadcaster: /LIDAR/odometrySim\nAverage rate: 15.603 Hz\nMost recent transform: -0.016 sec old \nBuffer length: 4.807 sec\n"];
+"/base_footprint" -> "/imu_link"[label="Broadcaster: /TestSetupTransforms/imu_link_broadcaster\nAverage rate: 10.194 Hz\nMost recent transform: -0.019 sec old \nBuffer length: 4.807 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1352814447.767"[ shape=plaintext ] ;
+ }->"/base_footprint";
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1352814447.767"[ shape=plaintext ] ;
+ }->"/odom";
+}
