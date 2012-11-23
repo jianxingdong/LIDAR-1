@@ -24,11 +24,11 @@ SensorSync::SensorSync()
 
 	this->odometryPublisher = this->nodeHandler.advertise<nav_msgs::Odometry>("/LIDAR/synched/odometry", 10);
 	this->imuPublisher = this->nodeHandler.advertise<sensor_msgs::Imu>("/LIDAR/synched/imu", 10);
-	this->laserScanPublisher = this->nodeHandler.advertise<sensor_msgs::LaserScan>("/LIDAR/synched/laserScan", 10);
+	this->pointCloudPublisher = this->nodeHandler.advertise<sensor_msgs::PointCloud>("/LIDAR/synched/pointCloud", 10);
 
 	this->odometrySubscriber = this->nodeHandler.subscribe("/LIDAR/simulatedOdometry", 10, &SensorSync::odometryCallback, this);
 	this->imuSubscriber = this->nodeHandler.subscribe("/fmSensors/imu", 10, &SensorSync::imuCallback, this);
-	this->laserScanSubscriber = this->nodeHandler.subscribe("/SICK/scan", 10, &SensorSync::laserScanCallback, this);
+	this->pointCloudSubscriber = this->nodeHandler.subscribe("/LIDAR/pointCloud", 10, &SensorSync::pointCloudCallback, this);
 }
 
 SensorSync::~SensorSync()
@@ -61,28 +61,21 @@ void SensorSync::imuCallback(const sensor_msgs::Imu::ConstPtr& data)
 	this->imu.orientation = data.get()->orientation;
 }
 
-void SensorSync::laserScanCallback(const sensor_msgs::LaserScan::ConstPtr& data)
+void SensorSync::pointCloudCallback(const sensor_msgs::PointCloud::ConstPtr& data)
 {
-	this->laserScan.header.frame_id = data.get()->header.frame_id;
-	this->laserScan.angle_min = data.get()->angle_min;
-	this->laserScan.angle_max = data.get()->angle_max;
-	this->laserScan.angle_increment = data.get()->angle_increment;
-	this->laserScan.time_increment = data.get()->time_increment;
-	this->laserScan.scan_time = data.get()->scan_time;
-	this->laserScan.range_min = data.get()->range_min;
-	this->laserScan.range_max = data.get()->range_max;
-	this->laserScan.ranges = data.get()->ranges;
-	this->laserScan.intensities = data.get()->intensities;
+	this->pointCloud.header.frame_id = data.get()->header.frame_id;
+	this->pointCloud.channels = data.get()->channels;
+	this->pointCloud.points = data.get()->points;
 }
 
 void SensorSync::synchronizeStamps(void)
 {
 	//	Update stamps
 	this->imu.header.stamp = this->odometry.header.stamp;
-	this->laserScan.header.stamp = this->odometry.header.stamp;
+	this->pointCloud.header.stamp = this->odometry.header.stamp;
 
 	//	Publish
 	this->odometryPublisher.publish(this->odometry);
 	this->imuPublisher.publish(this->imu);
-	this->laserScanPublisher.publish(this->laserScan);
+	this->pointCloudPublisher.publish(this->pointCloud);
 }

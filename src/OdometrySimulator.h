@@ -21,7 +21,7 @@ private:
 	{
 		double lX;			//	[m/s]
 		double lY;			//	[m/s]
-		double aZ;			//	[1/s]
+		double aZ;			//	[rad/s]
 	} baseLinkTwist;
 
 	struct
@@ -42,11 +42,14 @@ private:
 	tf::TransformBroadcaster transformBroadcaster;
 
 	void keyboardEventCallback (const std_msgs::Char::ConstPtr& data);
-	void updateOdometry(void);
+	void update(void);
+	void publish(void);
 
 public:
 	OdometrySimulator();
 	virtual ~OdometrySimulator();
+
+	void makeItSpin(void);
 };
 
 #endif /* ODOMETRYSIMULATOR_H_ */

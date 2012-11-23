@@ -22,8 +22,10 @@ ScanToPointCloud::ScanToPointCloud()
 {
 	this->nodeHandler = ros::NodeHandle();
 	this->pointCloudPublisher = this->nodeHandler.advertise<sensor_msgs::PointCloud>("/LIDAR/pointCloud", 10);
-	this->laserScanSubscriber = this->nodeHandler.subscribe("/LIDAR/synched/laserScan", 10, &ScanToPointCloud::laserScanCallback, this);
-	this->transformListener.setExtrapolationLimit(ros::Duration(0.1));
+	this->laserScanSubscriber.subscribe(this->nodeHandler, "/SICK/scan", 10);
+	this->laserNotifier = new tf::MessageFilter<sensor_msgs::LaserScan>(this->laserScanSubscriber, this->transformListener, "/base_link", 10);
+	this->laserNotifier->registerCallback(boost::bind(&ScanToPointCloud::laserScanCallback, this, _1));
+	this->laserNotifier->setTolerance(ros::Duration(0.1));
 }
 
 ScanToPointCloud::~ScanToPointCloud()

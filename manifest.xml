@@ -15,6 +15,7 @@
 	<depend package="geometry_msgs"/>
 	<depend package="laser_geometry"/>
 	<depend package="nav_msgs"/>
+	<depend package="std_msgs"/>
 </package>
 
 
