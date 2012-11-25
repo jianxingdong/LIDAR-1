@@ -53,7 +53,8 @@ void KeyboardEventListener::listenForEvents(void)
 	printf(" Listening for keyboard events ... \n");
 
 	isListening = true;
-	while (ros::ok() && isListening)
+
+	do
 	{
 		// Get events from keyboard
 		if (read(this->kfd, &this->key, 1) < 0)
@@ -67,7 +68,7 @@ void KeyboardEventListener::listenForEvents(void)
 		ROS_DEBUG("%c", this->key);
 		this->msg.data = this->key;
 		keyPublisher.publish(this->msg);
-	}
+	} while (ros::ok() && isListening);
 
 	printf(" Killing node due to signal: %i ... \n", signalId);
 
@@ -81,6 +82,6 @@ void KeyboardEventListener::listenForEvents(void)
 
 void KeyboardEventListener::quit(int signal)
 {
-	signalId = signal;
 	isListening = false;
+	signalId = signal;
 }
