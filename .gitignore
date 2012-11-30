@@ -48,7 +48,7 @@ msg_gen/
 srv_gen/
 CMakeCache.txt
 CMakeFiles/
-
+bags/
 # Editor backup files #
 #######################
 # Emacs

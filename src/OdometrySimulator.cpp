@@ -12,7 +12,8 @@ int main (int argc, char** argv)
 	ros::init(argc, argv, "OdometrySimulator");
 
 	OdometrySimulator odomSim;
-	odomSim.makeItSpin();
+	//odomSim.makeItSpin();
+	ros::spin();
 
 	return 0;
 }
@@ -76,13 +77,10 @@ void OdometrySimulator::keyboardEventCallback(const std_msgs::Char::ConstPtr& da
 	}
 }
 
-void OdometrySimulator::update(void)
+void OdometrySimulator::update(ros::Duration delta_time)
 {
-	//	Update simulated current time
-	this->currentTime += this->sampleTime;
-
 	//	Calculate odometry
-	double dt = this->sampleTime.toSec();
+	double dt = delta_time;
 	double deltaYaw = this->baseLinkTwist.aZ * dt;
 	double deltaX = (this->baseLinkTwist.lX * cos(this->odometryPose.yaw) - this->baseLinkTwist.lY * sin(this->odometryPose.yaw)) * dt;
 	double deltaY = (this->baseLinkTwist.lX * sin(this->odometryPose.yaw) + this->baseLinkTwist.lY * cos(this->odometryPose.yaw)) * dt;
@@ -98,7 +96,6 @@ void OdometrySimulator::update(void)
 	this->stampedTransform.transform.translation.y = this->odometryPose.y;
 
 	//	Update odometry
-	this->odometry.header.stamp = this->currentTime;
 	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(this->odometryPose.yaw);
 	this->odometry.pose.pose.position.x = this->odometryPose.x;
 	this->odometry.pose.pose.position.y = this->odometryPose.y;
@@ -106,18 +103,16 @@ void OdometrySimulator::update(void)
 	this->odometry.twist.twist.angular.z = deltaYaw;
 	this->odometry.twist.twist.linear.x = deltaX;
 	this->odometry.twist.twist.linear.y = deltaY;
-
-	//	Publish/broadcast
-	//this->publish();
 }
 
 void OdometrySimulator::publish(void)
 {
-	//	Broadcast transform
+		//	Broadcast transform
 	this->stampedTransform.header.stamp = ros::Time::now();
 	this->transformBroadcaster.sendTransform(this->stampedTransform);
 
 	//	Publish topic
+	this->odometry.header.stamp = ros::Time::now();
 	this->odometryPublisher.publish(this->odometry);
 }
 
@@ -129,6 +124,7 @@ void OdometrySimulator::makeItSpin(void)
 	{
 		ros::spinOnce();
 
+		this->update(r.cycleTime());
 		this->publish();
 
 		r.sleep();

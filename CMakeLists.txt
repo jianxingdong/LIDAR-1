@@ -30,7 +30,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #target_link_libraries(example ${PROJECT_NAME})
 
 rosbuild_add_boost_directories()
-rosbuild_add_executable(odometrySimulator src/OdometrySimulator.cpp)
+#rosbuild_add_executable(odometrySimulator src/OdometrySimulator.cpp)
 rosbuild_add_executable(sensorSynchronizer src/SensorSync.cpp)
 rosbuild_add_executable(laserScanToPointCloud src/LaserScanToPointCloud.cpp)
 rosbuild_link_boost(laserScanToPointCloud signals)

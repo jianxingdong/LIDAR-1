@@ -1,6 +1,7 @@
 <launch>
 	<group ns="TestSetupTransforms">
-		<node pkg="tf" type="static_transform_publisher" name="imu_link_broadcaster" args=	"-0.065 0 0 0 0 0 base_link imu_link 100"/>
-		<node pkg="tf" type="static_transform_publisher" name="laser_link_broadcaster" args="0.19 0 0.21 0 0.79 0 base_link laser_link 100"/>
+		<node pkg="tf" type="static_transform_publisher" name="imu_link_broadcaster" args=	"-0.065 0 0.05 0 0 0 base_link imu_link 100"/>
+		<node pkg="tf" type="static_transform_publisher" name="laser_link_broadcaster" args="0.19 0 0.31 0 0.79 0 base_link laser_link 100"/>
+		<node pkg="tf" type="static_transform_publisher" name="terrain_link_broadcaster" args="0.44 0 0 0 0 0 base_link terrain_link 100"/>
 	</group>
 </launch>

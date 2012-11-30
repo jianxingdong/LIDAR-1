@@ -41,8 +41,12 @@ private:
 	geometry_msgs::TransformStamped stampedTransform;
 	tf::TransformBroadcaster transformBroadcaster;
 
+	// State machine variables
+	bool isStarted;
+	bool isArrowKey1, isArrowKey2;
+
 	void keyboardEventCallback (const std_msgs::Char::ConstPtr& data);
-	void update(void);
+	void update(ros::Duration delta_time);
 	void publish(void);
 
 public:

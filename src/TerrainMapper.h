@@ -16,6 +16,10 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud.h>
+#include <pcl-1.5/pcl/point_cloud.h>
+#include <pcl-1.5/pcl/point_types.h>
+
+#include "Models.h"
 
 class TerrainMapper
 {
@@ -32,16 +36,28 @@ private:
 
 	//	Cell map
 	cv::Mat image;
-	double  depth, 		xRes;	//	x-dimension
-	double	width, 		yRes;	//	y-dimension
-	double	refColor,	zRes;	//	z-dimension
-	int imageHeight,	xOffset;
-	int imageWidth, 	yOffset;
+	cv::Mat tempImage;
+	double  depth, 		xRes;		//	x-dimension
+	double	width, 		yRes;		//	y-dimension
+	double	refColor,	zRes;		//	z-dimension
+	int imageHeight, imageWidth;
 
-	void resetMap (void);
+	//	Update data
+	sensor_msgs::PointCloud pointCloud;
+	sensor_msgs::Imu imu;
+	nav_msgs::Odometry odometry;
+
+	//	Callbacks
 	void odometryCallback (const nav_msgs::Odometry::ConstPtr& data);
 	void imuCallback (const sensor_msgs::Imu::ConstPtr& data);
 	void pointCloudCallback (const sensor_msgs::PointCloud::ConstPtr& data);
+
+	//	Map functions
+	unsigned char getPixel (int x, int y);
+	void setPixel (int x, int y, unsigned char color);
+	void resetMap (void);
+	void odometryToMap (void);
+	void pointCloudToMap (void);
 
 public:
 	TerrainMapper();

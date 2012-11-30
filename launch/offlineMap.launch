@@ -1,0 +1,13 @@
+<launch>
+	<include file="$(find LIDAR)/launch/testSetupTransform.launch"/>
+	
+	<group ns="ROS">
+		<node pkg="image_view" type="image_view" args="image:=/LIDAR/terrainMap" name="terrainMapImage" output="screen"/>
+	</group>
+
+	<group ns="LIDAR">
+		<!--node pkg="LIDAR" type="laserScanToPointCloud" name="pointCloud" output="screen"/-->
+		<node pkg="LIDAR" type="terrainMapper" name="tMapper" output="screen"/>
+	</group>
+
+</launch>
