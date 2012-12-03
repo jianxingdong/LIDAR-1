@@ -17,36 +17,18 @@
 class OdometrySimulator
 {
 private:
-	struct
-	{
-		double lX;			//	[m/s]
-		double lY;			//	[m/s]
-		double aZ;			//	[rad/s]
-	} baseLinkTwist;
-
-	struct
-	{
-		double x;			//	[m]
-		double y;			//	[m]
-		double yaw;			//	[rad]
-	} odometryPose;
-
 	ros::NodeHandle nodeHandler;
 	ros::Publisher odometryPublisher;
-	ros::Subscriber keyboardEventSubscriber;
+	ros::Subscriber twistSubscriber;
 
-	ros::Time currentTime;
-	ros::Duration sampleTime;
+	ros::Time oldTime;
+	geometry_msgs::TwistStamped twist;
 	nav_msgs::Odometry odometry;
 	geometry_msgs::TransformStamped stampedTransform;
 	tf::TransformBroadcaster transformBroadcaster;
 
-	// State machine variables
-	bool isStarted;
-	bool isArrowKey1, isArrowKey2;
-
-	void keyboardEventCallback (const std_msgs::Char::ConstPtr& data);
-	void update(ros::Duration delta_time);
+	void twistCallback (const geometry_msgs::TwistStamped::ConstPtr& data);
+	void update(double dt);
 	void publish(void);
 
 public:

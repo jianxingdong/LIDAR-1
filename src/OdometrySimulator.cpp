@@ -12,8 +12,7 @@ int main (int argc, char** argv)
 	ros::init(argc, argv, "OdometrySimulator");
 
 	OdometrySimulator odomSim;
-	//odomSim.makeItSpin();
-	ros::spin();
+	odomSim.makeItSpin();
 
 	return 0;
 }
@@ -23,45 +22,27 @@ OdometrySimulator::OdometrySimulator()
 	//	ROS node handler stuff
 	this->nodeHandler = ros::NodeHandle();
 	this->odometryPublisher = this->nodeHandler.advertise<nav_msgs::Odometry>("/LIDAR/simulatedOdometry", 10);
-	this->keyboardEventSubscriber = this->nodeHandler.subscribe("/fmHMI/keyboardEventListener", 10, &OdometrySimulator::keyboardEventCallback, this);
-
-	//	Base link twist essentials
-	this->baseLinkTwist.lX = 0.1f;
-	this->baseLinkTwist.lY = 0.0f;
-	this->baseLinkTwist.aZ = 0.0f;
-
-	//	Odometry state
-	this->odometryPose.x =
-	this->odometryPose.y = 0.0f;
-	this->odometryPose.yaw = M_PI_4;
-
-	//	Set currettime and set period
-	this->currentTime = ros::Time::now();
-	this->sampleTime = ros::Duration(0.1f);
+	this->twistSubscriber = this->nodeHandler.subscribe("/fmHMI/keyboardToTwist", 10, &OdometrySimulator::twistCallback, this);
 
 	//	Initialize transform
 	this->stampedTransform.header.frame_id = "/odom";
 	this->stampedTransform.child_frame_id = "/base_link";
-	this->stampedTransform.header.stamp = this->currentTime;
+	this->stampedTransform.header.stamp = ros::Time::now();
 
-	this->stampedTransform.transform.rotation = tf::createQuaternionMsgFromYaw(this->odometryPose.yaw);
-	this->stampedTransform.transform.translation.x = this->odometryPose.x;
-	this->stampedTransform.transform.translation.y = this->odometryPose.y;
+	this->stampedTransform.transform.rotation = tf::createQuaternionMsgFromYaw(0.0f);
+	this->stampedTransform.transform.translation.x = 0.0f;
+	this->stampedTransform.transform.translation.y = 0.0f;
 	this->stampedTransform.transform.translation.z = 0.0f;
 
 	//	Initialize odometry
 	this->odometry.header.frame_id = "/odom";
 	this->odometry.child_frame_id = "/base_link";
-	this->odometry.header.stamp = this->currentTime;
+	this->odometry.header.stamp = ros::Time::now();
 
-	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(this->odometryPose.yaw);
-	this->odometry.pose.pose.position.x = this->odometryPose.x;
-	this->odometry.pose.pose.position.y = this->odometryPose.y;
+	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.0f);
+	this->odometry.pose.pose.position.x =
+	this->odometry.pose.pose.position.y =
 	this->odometry.pose.pose.position.z = 0.0f;
-
-	this->odometry.twist.twist.angular.z =
-	this->odometry.twist.twist.linear.x =
-	this->odometry.twist.twist.linear.y = 0.0f;
 }
 
 OdometrySimulator::~OdometrySimulator()
@@ -69,36 +50,32 @@ OdometrySimulator::~OdometrySimulator()
 
 }
 
-void OdometrySimulator::keyboardEventCallback(const std_msgs::Char::ConstPtr& data)
+void OdometrySimulator::twistCallback(const geometry_msgs::TwistStamped::ConstPtr& data)
 {
-	if (data.get()->data == 0x20) 	//	Space-bar
-	{
-		this->update();
-	}
+	this->twist.header = data.get()->header;
+	this->twist.twist = data.get()->twist;
+
+	this->update((this->twist.header.stamp - this->oldTime).toSec());
+
+	this->oldTime = this->twist.header.stamp;
 }
 
-void OdometrySimulator::update(ros::Duration delta_time)
+void OdometrySimulator::update(double dt)
 {
 	//	Calculate odometry
-	double dt = delta_time;
-	double deltaYaw = this->baseLinkTwist.aZ * dt;
-	double deltaX = (this->baseLinkTwist.lX * cos(this->odometryPose.yaw) - this->baseLinkTwist.lY * sin(this->odometryPose.yaw)) * dt;
-	double deltaY = (this->baseLinkTwist.lX * sin(this->odometryPose.yaw) + this->baseLinkTwist.lY * cos(this->odometryPose.yaw)) * dt;
-
-	//	Update odometry pose
-	this->odometryPose.yaw += deltaYaw;
-	this->odometryPose.x += deltaX;
-	this->odometryPose.y += deltaY;
+	double deltaYaw = this->twist.twist.angular.z * dt;
+	double deltaX = (this->twist.twist.linear.x * cos(this->twist.twist.angular.z) - this->twist.twist.linear.x * sin(this->twist.twist.angular.z)) * dt;
+	double deltaY = (this->twist.twist.linear.x * sin(this->twist.twist.angular.z) + this->twist.twist.linear.x * cos(this->twist.twist.angular.z)) * dt;
 
 	//	Update transform
-	this->stampedTransform.transform.rotation = tf::createQuaternionMsgFromYaw(this->odometryPose.yaw);
-	this->stampedTransform.transform.translation.x = this->odometryPose.x;
-	this->stampedTransform.transform.translation.y = this->odometryPose.y;
+	this->stampedTransform.transform.rotation =	tf::createQuaternionMsgFromYaw(tf::getYaw(this->stampedTransform.transform.rotation) + deltaYaw);
+	this->stampedTransform.transform.translation.x += deltaX;
+	this->stampedTransform.transform.translation.y += deltaY;
 
 	//	Update odometry
-	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(this->odometryPose.yaw);
-	this->odometry.pose.pose.position.x = this->odometryPose.x;
-	this->odometry.pose.pose.position.y = this->odometryPose.y;
+	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(tf::getYaw(this->odometry.pose.pose.orientation) + deltaYaw);
+	this->odometry.pose.pose.position.x += deltaX;
+	this->odometry.pose.pose.position.y += deltaY;
 
 	this->odometry.twist.twist.angular.z = deltaYaw;
 	this->odometry.twist.twist.linear.x = deltaX;
@@ -124,7 +101,6 @@ void OdometrySimulator::makeItSpin(void)
 	{
 		ros::spinOnce();
 
-		this->update(r.cycleTime());
 		this->publish();
 
 		r.sleep();

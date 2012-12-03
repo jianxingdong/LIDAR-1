@@ -5,14 +5,13 @@
  *      Author: kent
  */
 
-#include "Models.h"
+#include "Statistics.h"
 
-Models::Models() {
+Models::Statistics::Statistics() {
 	// TODO Auto-generated constructor stub
-
 }
 
-Models::~Models() {
+Models::Statistics::~Statistics() {
 	// TODO Auto-generated destructor stub
 }
 

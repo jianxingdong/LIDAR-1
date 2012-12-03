@@ -19,7 +19,7 @@
 #include <pcl-1.5/pcl/point_cloud.h>
 #include <pcl-1.5/pcl/point_types.h>
 
-#include "Models.h"
+#include "Statistics.h"
 
 class TerrainMapper
 {

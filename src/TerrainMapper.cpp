@@ -104,7 +104,8 @@ void TerrainMapper::pointCloudToMap (void)
 		y = (double)this->pointCloud.points.at(i).y;
 		z = (double)this->pointCloud.points.at(i).z;
 
-		currentX = this->imageHeight / 5; // (int)(x / this->xRes);
+		//currentX = this->imageHeight / 5; // (int)(x / this->xRes);
+		currentX = (int)(x / this->xRes);
 		currentY = (int)((y + (this->width / 2)) / this->yRes);
 		color = (unsigned char)(((double)this->getPixel(currentX, currentY) + (this->refColor + (z / this->zRes))) / 2);
 		this->setPixel(currentX, currentY, color);

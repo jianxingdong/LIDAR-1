@@ -1,0 +1,12 @@
+<launch>
+	<group ns="FroboMind">
+		<node pkg="fmHMI" type="keyboardEventListener" name="keyboardListener" output="screen"/>
+		<node pkg="fmHMI" type="keyboardToTwist" name="keyboardToTwist" output="screen"/>
+	</group>
+
+	<group ns="LIDAR">
+		<node pkg="LIDAR" type="odometrySimulator" name="odometrySim" output="screen"/>
+	</group>
+	
+ 	<node pkg="rviz" type="rviz" name="rViz" output="screen"/>
+</launch>
