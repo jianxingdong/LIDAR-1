@@ -33,10 +33,10 @@ TerrainMapper::TerrainMapper() : imageTransporter(this->nodeHandler)
 	//	x:	0.5m @ 0.02m	y:	1.0m @ 0.02m
 	//	z:	-0.64m to 0.64m @ 0.005m
 	//	***********************************************************
-	this->depth 	= 0.5;		//	[m]
-	this->xRes		= 0.02;		//	[m]
-	this->width 	= 0.8;		//	[m]
-	this->yRes		= 0.02;		//	[m]
+	this->depth 	= 2.0;		//	[m]
+	this->xRes		= 0.01;		//	[m]
+	this->width 	= 3.0;		//	[m]
+	this->yRes		= 0.01;		//	[m]
 
 	this->refColor	= 128;
 	this->zRes		= 0.002;	//	[m]
@@ -46,8 +46,26 @@ TerrainMapper::TerrainMapper() : imageTransporter(this->nodeHandler)
 
 	this->image = cv::Mat::zeros(this->imageHeight, this->imageWidth, CV_8UC1);
 
-	this->resetMap();
+	this->resetMap(&this->image);
 	//	Setup cell map done
+
+	//	Weights of filter window
+	this->filterWidth = 0.5;	//	[m]
+	this->filterHeight = 0.5;	//	[m]
+	this->filterWindow = cv::Mat((int)(this->filterHeight / this->xRes), (int)(this->filterWidth / this->yRes), cv::DataType<double>::type);
+
+	double x, y, w;
+
+	for (int i = 0; i < this->filterWindow.rows; i++) for (int j = 0; j < this->filterWindow.cols; j++)
+	{
+		x = (this->xRes + 2 * this->xRes * i - this->filterHeight) / 2.0f;
+		y = (this->yRes + 2 * this->yRes * j - this->filterWidth) / 2.0f;
+		w = Models::Filters::gaussianFilter2D(x, y, 0.01f, 0.01f, 1.0f);	//	stdX = 0.01m and stdY = 0.01m
+
+		this->filterWindow.at<double>(i, j) = w;
+	}
+	//	Filter setup done
+
 }
 
 TerrainMapper::~TerrainMapper()
@@ -57,7 +75,7 @@ TerrainMapper::~TerrainMapper()
 
 void TerrainMapper::makeItSpin (void)
 {
-	ros::Rate r(10);
+	ros::Rate r(100);
 
 	while (ros::ok())
 	{
@@ -67,48 +85,71 @@ void TerrainMapper::makeItSpin (void)
 		this->output.image = this->image;
 
 		this->imagePublisher.publish(this->output.toImageMsg());
+
+		r.sleep();
 	}
 }
 
-void TerrainMapper::resetMap (void)
+void TerrainMapper::resetMap (cv::Mat *img)
 {
-	for (int i = 0; i < this->imageHeight; i++) for (int j = 0; j < this->imageWidth; j++)
+	for (int i = 0; i < img->rows; i++) for (int j = 0; j < img->cols; j++)
 		this->image.at<unsigned char>(i, j) = (unsigned char)this->refColor;
 }
 
-unsigned char TerrainMapper::getPixel (int x, int y)
+unsigned char TerrainMapper::getPixel (int x, int y, cv::Mat *img)
 {
-	if (x >= 0 && x < this->imageHeight &&	y >= 0 && y < this->imageWidth)
+	if (x >= 0 && x < img->rows &&	y >= 0 && y < img->cols)
 		return this->image.at<unsigned char>(x, y);
 
 	return 0;
 }
 
-void TerrainMapper::setPixel (int x, int y, unsigned char color)
+void TerrainMapper::setPixel (int x, int y, unsigned char color, cv::Mat *img)
 {
-	if (x >= 0 && x < this->imageHeight &&	y >= 0 && y < this->imageWidth)
+	if (x >= 0 && x < img->rows &&	y >= 0 && y < img->cols)
 		this->image.at<unsigned char>(x, y) = color;
 }
 
 void TerrainMapper::pointCloudToMap (void)
 {
-	this->resetMap();
+	this->resetMap(&this->image);
 
-	double x, y, z;
-	int currentX, currentY;
-	unsigned char color;
+	double x, y, z, weight, lookingAtColor;
+	int currentX, currentY, lookingAtX, lookingAtY;
 
-	for (unsigned int i = 0; i < this->pointCloud.points.size(); i++)
+	for (unsigned int p = 0; p < this->pointCloud.points.size(); p++)
 	{
-		x = (double)this->pointCloud.points.at(i).x;
-		y = (double)this->pointCloud.points.at(i).y;
-		z = (double)this->pointCloud.points.at(i).z;
+		x = (double)this->pointCloud.points.at(p).x;
+		y = (double)this->pointCloud.points.at(p).y;
+		z = (double)this->pointCloud.points.at(p).z;
 
-		//currentX = this->imageHeight / 5; // (int)(x / this->xRes);
+		//currentX = (int)(-x / this->xRes);
+		//currentY = (int)((-y + (this->width / 2)) / this->yRes);
 		currentX = (int)(x / this->xRes);
 		currentY = (int)((y + (this->width / 2)) / this->yRes);
-		color = (unsigned char)(((double)this->getPixel(currentX, currentY) + (this->refColor + (z / this->zRes))) / 2);
-		this->setPixel(currentX, currentY, color);
+
+		if (	currentX >= 0 && currentX < this->image.rows &&
+				currentY >= 0 && currentY < this->image.cols)
+		{
+
+			//	Convolution with 2D gaussian
+			for (int i = 0; i < this->filterWindow.rows; i++)
+			{
+				for (int j = 0; j < this->filterWindow.cols; j++)
+				{
+					weight = this->filterWindow.at<double>(i, j);
+
+					lookingAtX = currentX - (this->filterWindow.rows / 2) + i;
+					lookingAtY = currentY - (this->filterWindow.cols / 2) + j;
+
+					lookingAtColor = ((double)this->getPixel(lookingAtX, lookingAtY, &this->image) - (double)this->refColor) * this->zRes;
+
+					lookingAtColor = (lookingAtColor + z * weight) / (1.0 + weight); //	Updated color
+
+					this->setPixel(lookingAtX, lookingAtY, (unsigned char)(lookingAtColor / this->zRes) + this->refColor, &this->image);
+				}
+			}
+		}
 	}
 }
 
@@ -121,17 +162,8 @@ void TerrainMapper::odometryCallback(const nav_msgs::Odometry::ConstPtr& data)
 {
 	this->odometry.header.frame_id = data.get()->header.frame_id;
 	this->odometry.header.stamp = data.get()->header.stamp;
-	this->odometry.pose.pose.orientation = data.get()->pose.pose.orientation;
-	this->odometry.pose.pose.position.x = data.get()->pose.pose.position.x;
-	this->odometry.pose.pose.position.y = data.get()->pose.pose.position.y;
-	this->odometry.pose.pose.position.z = data.get()->pose.pose.position.z;
-
-	this->odometry.twist.twist.angular.x = data.get()->twist.twist.angular.x;
-	this->odometry.twist.twist.angular.y = data.get()->twist.twist.angular.y;
-	this->odometry.twist.twist.angular.z = data.get()->twist.twist.angular.z;
-	this->odometry.twist.twist.linear.x = data.get()->twist.twist.linear.x;
-	this->odometry.twist.twist.linear.y = data.get()->twist.twist.linear.y;
-	this->odometry.twist.twist.linear.z = data.get()->twist.twist.linear.z;
+	this->odometry.pose = data.get()->pose;
+	this->odometry.twist = data.get()->twist;
 
 	this->odometryToMap();
 }

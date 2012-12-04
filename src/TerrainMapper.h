@@ -19,7 +19,7 @@
 #include <pcl-1.5/pcl/point_cloud.h>
 #include <pcl-1.5/pcl/point_types.h>
 
-#include "Statistics.h"
+#include "Filters.h"
 
 class TerrainMapper
 {
@@ -42,6 +42,10 @@ private:
 	double	refColor,	zRes;		//	z-dimension
 	int imageHeight, imageWidth;
 
+	//	Filter
+	cv::Mat filterWindow;
+	double filterWidth, filterHeight;
+
 	//	Update data
 	sensor_msgs::PointCloud pointCloud;
 	sensor_msgs::Imu imu;
@@ -53,9 +57,9 @@ private:
 	void pointCloudCallback (const sensor_msgs::PointCloud::ConstPtr& data);
 
 	//	Map functions
-	unsigned char getPixel (int x, int y);
-	void setPixel (int x, int y, unsigned char color);
-	void resetMap (void);
+	unsigned char getPixel (int x, int y, cv::Mat *img);
+	void setPixel (int x, int y, unsigned char color, cv::Mat *img);
+	void resetMap (cv::Mat *img);
 	void odometryToMap (void);
 	void pointCloudToMap (void);
 

@@ -2,7 +2,8 @@
 	<include file="$(find LIDAR)/launch/testSetupTransform.launch"/>
 	
 	<group ns="FroboMind">
-		<node pkg="fmHMI" type="keyboardEventListener" name="keyboard" output="screen"/>
+		<node pkg="fmHMI" type="keyboardEventListener" name="keyEvents" output="screen"/>
+		<node pkg="fmHMI" type="keyboardToTwist" name="keyToTwist" output="screen"/>
 	
 		<node pkg="fmCSP" name="usbSerial" type="serial_string" output="screen" >
 	        <param name="publisher_topic" value="/fmCSP/com0_rx" />	 
@@ -39,8 +40,8 @@
 	</group>
 
 	<group ns="LIDAR">
+		
 		<node pkg="LIDAR" type="odometrySimulator" name="odometrySim" output="screen"/>
-		<node pkg="LIDAR" type="sensorSynchronizer" name="sensorSync" output="screen"/>
 		<node pkg="LIDAR" type="laserScanToPointCloud" name="pointCloud" output="screen"/>
 	</group>
 	

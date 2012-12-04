@@ -43,6 +43,10 @@ OdometrySimulator::OdometrySimulator()
 	this->odometry.pose.pose.position.x =
 	this->odometry.pose.pose.position.y =
 	this->odometry.pose.pose.position.z = 0.0f;
+
+	this->x =
+	this->y =
+	this->theta = 0.0f;
 }
 
 OdometrySimulator::~OdometrySimulator()
@@ -64,27 +68,33 @@ void OdometrySimulator::update(double dt)
 {
 	//	Calculate odometry
 	double deltaYaw = this->twist.twist.angular.z * dt;
-	double deltaX = (this->twist.twist.linear.x * cos(this->twist.twist.angular.z) - this->twist.twist.linear.x * sin(this->twist.twist.angular.z)) * dt;
-	double deltaY = (this->twist.twist.linear.x * sin(this->twist.twist.angular.z) + this->twist.twist.linear.x * cos(this->twist.twist.angular.z)) * dt;
+	double deltaX = (this->twist.twist.linear.x * cos(this->theta) - this->twist.twist.linear.y * sin(this->theta)) * dt;
+	double deltaY = (this->twist.twist.linear.x * sin(this->theta) + this->twist.twist.linear.y * cos(this->theta)) * dt;
+
+	this->x += deltaX;
+	this->y += deltaY;
+	this->theta += deltaYaw;
 
 	//	Update transform
-	this->stampedTransform.transform.rotation =	tf::createQuaternionMsgFromYaw(tf::getYaw(this->stampedTransform.transform.rotation) + deltaYaw);
-	this->stampedTransform.transform.translation.x += deltaX;
-	this->stampedTransform.transform.translation.y += deltaY;
+	this->stampedTransform.transform.translation.x = this->x;
+	this->stampedTransform.transform.translation.y = this->y;
+	this->stampedTransform.transform.translation.z = 0.0f;
+	this->stampedTransform.transform.rotation =	tf::createQuaternionMsgFromYaw(this->theta);
 
 	//	Update odometry
-	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(tf::getYaw(this->odometry.pose.pose.orientation) + deltaYaw);
-	this->odometry.pose.pose.position.x += deltaX;
-	this->odometry.pose.pose.position.y += deltaY;
+	this->odometry.pose.pose.position.x = this->x;
+	this->odometry.pose.pose.position.y = this->y;
+	this->odometry.pose.pose.position.z = 0.0f;
+	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(this->theta);
 
-	this->odometry.twist.twist.angular.z = deltaYaw;
 	this->odometry.twist.twist.linear.x = deltaX;
 	this->odometry.twist.twist.linear.y = deltaY;
+	this->odometry.twist.twist.angular.z = deltaYaw;
 }
 
 void OdometrySimulator::publish(void)
 {
-		//	Broadcast transform
+	//	Broadcast transform
 	this->stampedTransform.header.stamp = ros::Time::now();
 	this->transformBroadcaster.sendTransform(this->stampedTransform);
 

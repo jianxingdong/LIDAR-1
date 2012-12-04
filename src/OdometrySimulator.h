@@ -27,6 +27,8 @@ private:
 	geometry_msgs::TransformStamped stampedTransform;
 	tf::TransformBroadcaster transformBroadcaster;
 
+	double x, y, theta;
+
 	void twistCallback (const geometry_msgs::TwistStamped::ConstPtr& data);
 	void update(double dt);
 	void publish(void);
