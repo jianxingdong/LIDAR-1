@@ -87,9 +87,12 @@ void OdometrySimulator::update(double dt)
 	this->odometry.pose.pose.position.z = 0.0f;
 	this->odometry.pose.pose.orientation = tf::createQuaternionMsgFromYaw(this->theta);
 
-	this->odometry.twist.twist.linear.x = deltaX;
-	this->odometry.twist.twist.linear.y = deltaY;
-	this->odometry.twist.twist.angular.z = deltaYaw;
+//	this->odometry.twist.twist.linear.x = deltaX;
+//	this->odometry.twist.twist.linear.y = deltaY;
+//	this->odometry.twist.twist.angular.z = deltaYaw;
+	this->odometry.twist.twist.linear.x = this->twist.twist.linear.x;
+	this->odometry.twist.twist.linear.y = 0.0;
+	this->odometry.twist.twist.angular.z = this->twist.twist.angular.z;
 }
 
 void OdometrySimulator::publish(void)

@@ -1,5 +1,6 @@
 <launch>
 	<include file="$(find LIDAR)/launch/testSetupTransform.launch"/>
+	<include file="$(find LIDAR)/launch/simOdom.launch"/>
 	
 	<group ns="ROS">
 		<node pkg="image_view" type="image_view" args="image:=/LIDAR/terrainMap" name="terrainMapImage" output="screen"/>

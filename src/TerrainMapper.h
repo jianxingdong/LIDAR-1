@@ -40,6 +40,7 @@ private:
 	double  depth, 		xRes;		//	x-dimension
 	double	width, 		yRes;		//	y-dimension
 	double	refColor,	zRes;		//	z-dimension
+	double  minHeight, maxHeight;
 	int imageHeight, imageWidth;
 
 	//	Filter
@@ -47,6 +48,9 @@ private:
 	double filterWidth, filterHeight;
 
 	//	Update data
+	ros::Time previousTime;
+	double linearDistanceMoved;
+	//double angularDistanceMoved;
 	sensor_msgs::PointCloud pointCloud;
 	sensor_msgs::Imu imu;
 	nav_msgs::Odometry odometry;

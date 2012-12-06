@@ -1,0 +1,29 @@
+<launch>
+	<include file="$(find LIDAR)/launch/testSetupTransform.launch"/>
+	<include file="$(find LIDAR)/launch/simOdom.launch"/>
+	
+	<group ns="SICK">
+		<node name="sick_tim3xx" pkg="sick_tim3xx" type="sick_tim3xx" respawn="false" output="screen">
+	    	<!-- default values: -->
+	    	
+	      	<!--param name="min_ang" type="double" value="-2.35619449019" /-->
+	      	<!--param name="max_ang" type="double" value="2.35619449019" /-->
+	      	<param name="min_ang" type="double" value="-1.0" />
+	      	<param name="max_ang" type="double" value="1.0" />
+	      	<param name="intensity" type="bool" value="True" />
+	      	<param name="skip" type="int" value="0" />
+	      	<param name="frame_id" type="str" value="laser_link" />
+	      	<param name="time_offset" type="double" value="-0.001" />
+	    	
+	  	</node>
+	</group>
+	
+	<group ns="LIDAR">
+		<node pkg="LIDAR" type="laserScanToPointCloud" name="pointCloud" output="screen"/>
+		<node pkg="LIDAR" type="terrainMapper" name="tMapper" output="screen"/>
+	</group>
+
+	<group ns="ROS">
+		<node pkg="image_view" type="image_view" args="image:=/LIDAR/terrainMap" name="terrainMapImage" output="screen"/>
+	</group>
+</launch>

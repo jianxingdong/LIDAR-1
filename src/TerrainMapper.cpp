@@ -24,7 +24,7 @@ TerrainMapper::TerrainMapper() : imageTransporter(this->nodeHandler)
 	this->output.encoding = sensor_msgs::image_encodings::MONO8;
 
 	//	Setup callbacks
-	this->odometrySubscriber = this->nodeHandler.subscribe("/LIDAR/synched/odometry", 10, &TerrainMapper::odometryCallback, this);
+	this->odometrySubscriber = this->nodeHandler.subscribe("/LIDAR/simulatedOdometry", 10, &TerrainMapper::odometryCallback, this);
 	this->imuSubscriber = this->nodeHandler.subscribe("/LIDAR/synched/imu", 10, &TerrainMapper::imuCallback, this);
 	this->pointCloudSubscriber = this->nodeHandler.subscribe("/LIDAR/pointCloud", 10, &TerrainMapper::pointCloudCallback, this);
 
@@ -35,7 +35,7 @@ TerrainMapper::TerrainMapper() : imageTransporter(this->nodeHandler)
 	//	***********************************************************
 	this->depth 	= 2.0;		//	[m]
 	this->xRes		= 0.01;		//	[m]
-	this->width 	= 3.0;		//	[m]
+	this->width 	= 2.0;		//	[m]
 	this->yRes		= 0.01;		//	[m]
 
 	this->refColor	= 128;
@@ -44,27 +44,34 @@ TerrainMapper::TerrainMapper() : imageTransporter(this->nodeHandler)
 	this->imageHeight	= (int)(depth / xRes);
 	this->imageWidth 	= (int)(width / yRes);
 
+	this->minHeight = -(double)(this->refColor) / this->zRes;
+	this->maxHeight = (double)(255 - this->refColor) / this->zRes;
+
 	this->image = cv::Mat::zeros(this->imageHeight, this->imageWidth, CV_8UC1);
 
 	this->resetMap(&this->image);
 	//	Setup cell map done
 
 	//	Weights of filter window
-	this->filterWidth = 0.5;	//	[m]
-	this->filterHeight = 0.5;	//	[m]
+	this->filterWidth = 0.1;	//	[m]
+	this->filterHeight = 0.1;	//	[m]
 	this->filterWindow = cv::Mat((int)(this->filterHeight / this->xRes), (int)(this->filterWidth / this->yRes), cv::DataType<double>::type);
 
 	double x, y, w;
 
 	for (int i = 0; i < this->filterWindow.rows; i++) for (int j = 0; j < this->filterWindow.cols; j++)
 	{
-		x = (this->xRes + 2 * this->xRes * i - this->filterHeight) / 2.0f;
-		y = (this->yRes + 2 * this->yRes * j - this->filterWidth) / 2.0f;
-		w = Models::Filters::gaussianFilter2D(x, y, 0.01f, 0.01f, 1.0f);	//	stdX = 0.01m and stdY = 0.01m
+		x = (this->xRes + 2 * this->xRes * i - this->filterHeight) / 2.0;
+		y = (this->yRes + 2 * this->yRes * j - this->filterWidth) / 2.0;
+		w = Models::Filters::gaussianFilter2D(x, y, 0.01, 0.01, 1.0);	//	stdX = 0.01m and stdY = 0.01m
 
 		this->filterWindow.at<double>(i, j) = w;
 	}
 	//	Filter setup done
+
+	//	Setup previous time (setup odometry variables)
+	this->previousTime = ros::Time::now();
+	this->linearDistanceMoved = 0.0;
 
 }
 
@@ -112,8 +119,6 @@ void TerrainMapper::setPixel (int x, int y, unsigned char color, cv::Mat *img)
 
 void TerrainMapper::pointCloudToMap (void)
 {
-	this->resetMap(&this->image);
-
 	double x, y, z, weight, lookingAtColor;
 	int currentX, currentY, lookingAtX, lookingAtY;
 
@@ -123,15 +128,12 @@ void TerrainMapper::pointCloudToMap (void)
 		y = (double)this->pointCloud.points.at(p).y;
 		z = (double)this->pointCloud.points.at(p).z;
 
-		//currentX = (int)(-x / this->xRes);
-		//currentY = (int)((-y + (this->width / 2)) / this->yRes);
-		currentX = (int)(x / this->xRes);
-		currentY = (int)((y + (this->width / 2)) / this->yRes);
+		currentX = (int)(-x / this->xRes);
+		currentY = (int)((-y + (this->width / 2)) / this->yRes);
 
 		if (	currentX >= 0 && currentX < this->image.rows &&
 				currentY >= 0 && currentY < this->image.cols)
 		{
-
 			//	Convolution with 2D gaussian
 			for (int i = 0; i < this->filterWindow.rows; i++)
 			{
@@ -146,6 +148,10 @@ void TerrainMapper::pointCloudToMap (void)
 
 					lookingAtColor = (lookingAtColor + z * weight) / (1.0 + weight); //	Updated color
 
+					//	Check for possibility in oveflow when converting to color (unsigned char)
+					lookingAtColor < this->minHeight ? lookingAtColor = this->minHeight : lookingAtColor;
+					lookingAtColor > this->maxHeight ? lookingAtColor = this->maxHeight : lookingAtColor;
+
 					this->setPixel(lookingAtX, lookingAtY, (unsigned char)(lookingAtColor / this->zRes) + this->refColor, &this->image);
 				}
 			}
@@ -155,7 +161,25 @@ void TerrainMapper::pointCloudToMap (void)
 
 void TerrainMapper::odometryToMap (void)
 {
-	//
+
+	this->linearDistanceMoved += this->odometry.twist.twist.linear.x * (ros::Time::now() - this->previousTime).toSec();
+
+	if (this->linearDistanceMoved > this->xRes)
+	{
+		this->linearDistanceMoved = 0.0;
+
+		//	Move pixels according to linear translation
+		if (this->odometry.twist.twist.linear.x > 0.0)	// Positive
+		{
+			for (int i = this->image.rows - 2; i >= 0; i--)
+			{
+				for (int j = 0; j < this->image.cols; j++)
+				{
+					this->image.at<unsigned char>(i + 1, j) = this->image.at<unsigned char>(i, j);
+				}
+			}
+		}
+	}
 }
 
 void TerrainMapper::odometryCallback(const nav_msgs::Odometry::ConstPtr& data)
