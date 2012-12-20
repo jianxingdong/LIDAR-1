@@ -21,13 +21,31 @@ TerrainMapper::TerrainMapper() : imageTransporter(this->nodeHandler)
 {
 	this->imagePublisher = this->imageTransporter.advertise("/LIDAR/terrainMap", 10);
 	this->output.header.frame_id = "terrain_link";
-	this->output.encoding = sensor_msgs::image_encodings::MONO8;
+	//this->output.encoding = sensor_msgs::image_encodings::MONO8;
+	this->output.encoding = sensor_msgs::image_encodings::TYPE_64FC1;
 
 	//	Setup callbacks
 	this->odometrySubscriber = this->nodeHandler.subscribe("/LIDAR/simulatedOdometry", 10, &TerrainMapper::odometryCallback, this);
 	this->imuSubscriber = this->nodeHandler.subscribe("/LIDAR/synched/imu", 10, &TerrainMapper::imuCallback, this);
 	this->pointCloudSubscriber = this->nodeHandler.subscribe("/LIDAR/pointCloud", 10, &TerrainMapper::pointCloudCallback, this);
 
+	//	Initializers
+	this->initCellMap();
+	this->initWeightMap();
+	this->initFilter();
+
+	//	Setup previous time (setup odometry variables)
+	this->previousTime = ros::Time::now();
+	this->linearDistanceMoved = 0.0;
+}
+
+TerrainMapper::~TerrainMapper()
+{
+
+}
+
+void TerrainMapper::initCellMap(void)
+{
 	//	Setup cell map
 	//	***********************************************************
 	//	x:	0.5m @ 0.02m	y:	1.0m @ 0.02m
@@ -35,7 +53,7 @@ TerrainMapper::TerrainMapper() : imageTransporter(this->nodeHandler)
 	//	***********************************************************
 	this->depth 	= 2.0;		//	[m]
 	this->xRes		= 0.01;		//	[m]
-	this->width 	= 2.0;		//	[m]
+	this->width 	= 5.0;		//	[m]
 	this->yRes		= 0.01;		//	[m]
 
 	this->refColor	= 128;
@@ -44,17 +62,31 @@ TerrainMapper::TerrainMapper() : imageTransporter(this->nodeHandler)
 	this->imageHeight	= (int)(depth / xRes);
 	this->imageWidth 	= (int)(width / yRes);
 
-	this->minHeight = -(double)(this->refColor) / this->zRes;
-	this->maxHeight = (double)(255 - this->refColor) / this->zRes;
+	this->minHeight = -(double)(this->refColor) * this->zRes;
+	this->maxHeight = (double)(255 - this->refColor) * this->zRes;
 
-	this->image = cv::Mat::zeros(this->imageHeight, this->imageWidth, CV_8UC1);
+	this->heightMap = cv::Mat::zeros(this->imageHeight, this->imageWidth, CV_8UC1);
 
-	this->resetMap(&this->image);
+	this->resetHeights();
 	//	Setup cell map done
+}
 
+void TerrainMapper::initWeightMap(void)
+{
+	//	Setup weight window
+	this->weightMap = cv::Mat::zeros(this->heightMap.rows, this->heightMap.cols, cv::DataType<double>::type);
+
+	this->resetWeights();
+	//	Setup weight window done
+}
+
+void TerrainMapper::initFilter(void)
+{
 	//	Weights of filter window
 	this->filterWidth = 0.1;	//	[m]
 	this->filterHeight = 0.1;	//	[m]
+	this->stdX = 0.01;			//	[m]
+	this->stdY = 0.01;			//	[m]
 	this->filterWindow = cv::Mat((int)(this->filterHeight / this->xRes), (int)(this->filterWidth / this->yRes), cv::DataType<double>::type);
 
 	double x, y, w;
@@ -63,21 +95,11 @@ TerrainMapper::TerrainMapper() : imageTransporter(this->nodeHandler)
 	{
 		x = (this->xRes + 2 * this->xRes * i - this->filterHeight) / 2.0;
 		y = (this->yRes + 2 * this->yRes * j - this->filterWidth) / 2.0;
-		w = Models::Filters::gaussianFilter2D(x, y, 0.01, 0.01, 1.0);	//	stdX = 0.01m and stdY = 0.01m
+		w = Models::Filters::gaussianFilter2D(x, y, this->stdX, this->stdY, 1.0);
 
 		this->filterWindow.at<double>(i, j) = w;
 	}
 	//	Filter setup done
-
-	//	Setup previous time (setup odometry variables)
-	this->previousTime = ros::Time::now();
-	this->linearDistanceMoved = 0.0;
-
-}
-
-TerrainMapper::~TerrainMapper()
-{
-
 }
 
 void TerrainMapper::makeItSpin (void)
@@ -89,7 +111,8 @@ void TerrainMapper::makeItSpin (void)
 		ros::spinOnce();
 
 		this->output.header.stamp = ros::Time::now();
-		this->output.image = this->image;
+//		this->output.image = this->heightMap;
+		this->output.image = this->weightMap;
 
 		this->imagePublisher.publish(this->output.toImageMsg());
 
@@ -97,29 +120,21 @@ void TerrainMapper::makeItSpin (void)
 	}
 }
 
-void TerrainMapper::resetMap (cv::Mat *img)
+void TerrainMapper::resetHeights (void)
 {
-	for (int i = 0; i < img->rows; i++) for (int j = 0; j < img->cols; j++)
-		this->image.at<unsigned char>(i, j) = (unsigned char)this->refColor;
+	for (int i = 0; i < this->heightMap.rows; i++) for (int j = 0; j < this->heightMap.cols; j++)
+		this->heightMap.at<unsigned char>(i, j) = (unsigned char)this->refColor;
 }
 
-unsigned char TerrainMapper::getPixel (int x, int y, cv::Mat *img)
+void TerrainMapper::resetWeights (void)
 {
-	if (x >= 0 && x < img->rows &&	y >= 0 && y < img->cols)
-		return this->image.at<unsigned char>(x, y);
-
-	return 0;
-}
-
-void TerrainMapper::setPixel (int x, int y, unsigned char color, cv::Mat *img)
-{
-	if (x >= 0 && x < img->rows &&	y >= 0 && y < img->cols)
-		this->image.at<unsigned char>(x, y) = color;
+	for (int i = 0; i < this->weightMap.rows; i++) for (int j = 0; j < this->weightMap.cols; j++)
+		this->weightMap.at<double>(i, j) = 1.0;
 }
 
 void TerrainMapper::pointCloudToMap (void)
 {
-	double x, y, z, weight, lookingAtColor;
+	double x, y, z, weight, lookingAtColor, oldWeight;
 	int currentX, currentY, lookingAtX, lookingAtY;
 
 	for (unsigned int p = 0; p < this->pointCloud.points.size(); p++)
@@ -131,28 +146,38 @@ void TerrainMapper::pointCloudToMap (void)
 		currentX = (int)(-x / this->xRes);
 		currentY = (int)((-y + (this->width / 2)) / this->yRes);
 
-		if (	currentX >= 0 && currentX < this->image.rows &&
-				currentY >= 0 && currentY < this->image.cols)
+		if (	currentX >= 0 && currentX < this->heightMap.rows &&
+				currentY >= 0 && currentY < this->heightMap.cols)
 		{
 			//	Convolution with 2D gaussian
 			for (int i = 0; i < this->filterWindow.rows; i++)
 			{
 				for (int j = 0; j < this->filterWindow.cols; j++)
 				{
+					//	Get weight and calculate position
 					weight = this->filterWindow.at<double>(i, j);
-
 					lookingAtX = currentX - (this->filterWindow.rows / 2) + i;
 					lookingAtY = currentY - (this->filterWindow.cols / 2) + j;
 
-					lookingAtColor = ((double)this->getPixel(lookingAtX, lookingAtY, &this->image) - (double)this->refColor) * this->zRes;
+					//	Checking if x-y coordinate is in bound
+					if (	lookingAtX >= 0 && lookingAtX < this->heightMap.rows &&
+							lookingAtY >= 0 && lookingAtY < this->heightMap.cols)
+					{
+						//	Get weight from weight map
+						oldWeight = this->weightMap.at<double>(lookingAtX, lookingAtY);
 
-					lookingAtColor = (lookingAtColor + z * weight) / (1.0 + weight); //	Updated color
+						//	Set pixel color
+						lookingAtColor = (double)(this->heightMap.at<unsigned char>(lookingAtX, lookingAtY) - this->refColor) * this->zRes;
+						lookingAtColor = (lookingAtColor + z * weight) / (1.0 + weight); //	Updated color
 
-					//	Check for possibility in oveflow when converting to color (unsigned char)
-					lookingAtColor < this->minHeight ? lookingAtColor = this->minHeight : lookingAtColor;
-					lookingAtColor > this->maxHeight ? lookingAtColor = this->maxHeight : lookingAtColor;
+						//	Check for possibility in overflow when converting to color (unsigned char)
+						lookingAtColor < this->minHeight ? lookingAtColor = this->minHeight : lookingAtColor;
+						lookingAtColor > this->maxHeight ? lookingAtColor = this->maxHeight : lookingAtColor;
 
-					this->setPixel(lookingAtX, lookingAtY, (unsigned char)(lookingAtColor / this->zRes) + this->refColor, &this->image);
+						//	Set color in height map and weight in weight map
+						this->heightMap.at<unsigned char>(lookingAtX, lookingAtY) = (unsigned char)(lookingAtColor / this->zRes) + this->refColor;
+						this->weightMap.at<double>(lookingAtX, lookingAtY) = oldWeight + weight;
+					}
 				}
 			}
 		}
@@ -161,7 +186,6 @@ void TerrainMapper::pointCloudToMap (void)
 
 void TerrainMapper::odometryToMap (void)
 {
-
 	this->linearDistanceMoved += this->odometry.twist.twist.linear.x * (ros::Time::now() - this->previousTime).toSec();
 
 	if (this->linearDistanceMoved > this->xRes)
@@ -171,11 +195,12 @@ void TerrainMapper::odometryToMap (void)
 		//	Move pixels according to linear translation
 		if (this->odometry.twist.twist.linear.x > 0.0)	// Positive
 		{
-			for (int i = this->image.rows - 2; i >= 0; i--)
+			for (int i = this->heightMap.rows - 2; i >= 0; i--)
 			{
-				for (int j = 0; j < this->image.cols; j++)
+				for (int j = 0; j < this->heightMap.cols; j++)
 				{
-					this->image.at<unsigned char>(i + 1, j) = this->image.at<unsigned char>(i, j);
+					this->heightMap.at<unsigned char>(i + 1, j) = this->heightMap.at<unsigned char>(i, j);
+					this->weightMap.at<double>(i + 1, j) = this->weightMap.at<double>(i, j);
 				}
 			}
 		}

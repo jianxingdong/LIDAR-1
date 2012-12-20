@@ -24,46 +24,60 @@
 class TerrainMapper
 {
 private:
+	//	Parameters
+	std::string publisherTopic;
+	std::string pointCloudTopic;
+	std::string odometryTopic;
+
+	//	ROS
 	ros::NodeHandle nodeHandler;
 	ros::Subscriber odometrySubscriber;
 	ros::Subscriber imuSubscriber;
 	ros::Subscriber pointCloudSubscriber;
 	image_transport::Publisher imagePublisher;
 
+	//	Messages
+	sensor_msgs::PointCloud pointCloud;
+	sensor_msgs::Imu imu;
+	nav_msgs::Odometry odometry;
+
 	//	OpenCV bridge to ROS
 	image_transport::ImageTransport imageTransporter;
 	cv_bridge::CvImage output;
 
 	//	Cell map
-	cv::Mat image;
-	cv::Mat tempImage;
+	cv::Mat heightMap;
 	double  depth, 		xRes;		//	x-dimension
 	double	width, 		yRes;		//	y-dimension
 	double	refColor,	zRes;		//	z-dimension
 	double  minHeight, maxHeight;
-	int imageHeight, imageWidth;
+	int 	imageHeight, imageWidth;
 
 	//	Filter
 	cv::Mat filterWindow;
 	double filterWidth, filterHeight;
+	double stdX, stdY;
+
+	//	Weight map
+	cv::Mat weightMap;
 
 	//	Update data
 	ros::Time previousTime;
 	double linearDistanceMoved;
-	//double angularDistanceMoved;
-	sensor_msgs::PointCloud pointCloud;
-	sensor_msgs::Imu imu;
-	nav_msgs::Odometry odometry;
 
 	//	Callbacks
 	void odometryCallback (const nav_msgs::Odometry::ConstPtr& data);
 	void imuCallback (const sensor_msgs::Imu::ConstPtr& data);
 	void pointCloudCallback (const sensor_msgs::PointCloud::ConstPtr& data);
 
+	//	Setup functions
+	void initCellMap (void);
+	void initWeightMap (void);
+	void initFilter (void);
+
 	//	Map functions
-	unsigned char getPixel (int x, int y, cv::Mat *img);
-	void setPixel (int x, int y, unsigned char color, cv::Mat *img);
-	void resetMap (cv::Mat *img);
+	void resetHeights (void);
+	void resetWeights (void);
 	void odometryToMap (void);
 	void pointCloudToMap (void);
 
