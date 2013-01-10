@@ -20,9 +20,13 @@ int main (int argc, char** argv)
 OdometrySimulator::OdometrySimulator()
 {
 	//	ROS node handler stuff
-	this->nodeHandler = ros::NodeHandle();
-	this->odometryPublisher = this->nodeHandler.advertise<nav_msgs::Odometry>("/LIDAR/simulatedOdometry", 10);
-	this->twistSubscriber = this->nodeHandler.subscribe("/fmHMI/keyboardToTwist", 10, &OdometrySimulator::twistCallback, this);
+	this->nodeHandler = ros::NodeHandle("~");
+
+	this->nodeHandler.param<std::string>("twist_topic", 	this->twistTopic, 	"/fmHMI/keyboardToTwist");
+	this->nodeHandler.param<std::string>("odom_topic", 	 	this->odomTopic, 	"/LIDAR/simulatedOdometry");
+
+	this->odometryPublisher = this->nodeHandler.advertise<nav_msgs::Odometry>(this->odomTopic, 10);
+	this->twistSubscriber = this->nodeHandler.subscribe(this->twistTopic, 10, &OdometrySimulator::twistCallback, this);
 
 	//	Initialize transform
 	this->stampedTransform.header.frame_id = "/odom";

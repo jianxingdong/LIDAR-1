@@ -28,6 +28,8 @@ private:
 	tf::TransformBroadcaster transformBroadcaster;
 
 	double x, y, theta;
+	std::string twistTopic;
+	std::string odomTopic;
 
 	void twistCallback (const geometry_msgs::TwistStamped::ConstPtr& data);
 	void update(double dt);

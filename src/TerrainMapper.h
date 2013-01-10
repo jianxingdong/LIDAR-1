@@ -11,6 +11,7 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <opencv/cvwimage.h>
+#include <opencv/cv.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 #include <nav_msgs/Odometry.h>
@@ -34,7 +35,9 @@ private:
 	ros::Subscriber odometrySubscriber;
 	ros::Subscriber imuSubscriber;
 	ros::Subscriber pointCloudSubscriber;
-	image_transport::Publisher imagePublisher;
+	image_transport::Publisher heightPublisher;
+	image_transport::Publisher weightPublisher;
+	image_transport::Publisher videoPublisher;
 
 	//	Messages
 	sensor_msgs::PointCloud pointCloud;
@@ -43,7 +46,11 @@ private:
 
 	//	OpenCV bridge to ROS
 	image_transport::ImageTransport imageTransporter;
-	cv_bridge::CvImage output;
+	cv_bridge::CvImage outputHeights;
+	cv_bridge::CvImage outputWeights;
+	cv_bridge::CvImage videoOutput;
+
+	cv::Mat video;
 
 	//	Cell map
 	cv::Mat heightMap;
@@ -64,6 +71,7 @@ private:
 	//	Update data
 	ros::Time previousTime;
 	double linearDistanceMoved;
+	double angularRotationMoved;
 
 	//	Callbacks
 	void odometryCallback (const nav_msgs::Odometry::ConstPtr& data);

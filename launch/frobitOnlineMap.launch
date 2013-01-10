@@ -1,6 +1,6 @@
 <launch>
-	<include file="$(find LIDAR)/launch/testSetupTransform.launch"/>
-	<include file="$(find LIDAR)/launch/simOdom.launch"/>
+	<include file="$(find LIDAR)/launch/frobitSetupTransform.launch"/>
+	<include file="$(find LIDAR)/launch/frobitOdometry.launch"/>
 	
 	<group ns="SICK">
 		<node name="sick_tim3xx" pkg="sick_tim3xx" type="sick_tim3xx" respawn="false" output="screen">

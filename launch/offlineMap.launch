@@ -4,7 +4,10 @@
 	
 	<group ns="ROS">
 		<node pkg="image_view" type="image_view" args="image:=/LIDAR/terrainMap" name="terrainMapImage" output="screen"/>
+		<node pkg="image_view" type="image_view" args="image:=/LIDAR/weightMap" name="weightMapImage" output="screen"/>
+		<!--node pkg="rosbag" type="rosbag" args="play $(find LIDAR)/bags/2012-12-10-11-52-14.bag" name="RosBagPlayer" output="screen"/-->
 	</group>
+
 
 	<group ns="LIDAR">
 		<!--node pkg="LIDAR" type="laserScanToPointCloud" name="pointCloud" output="screen"/-->
